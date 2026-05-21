@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MilsimDev — Operações de Simulação Militar</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  /* ─────────────────────────────────────────
+     CONFIGURAÇÃO: substitua os valores abaixo
+     ───────────────────────────────────────── */
+
+  /*
+    MERCADO PAGO:
+      1. Acesse https://www.mercadopago.com.br/developers
+      2. Crie um app e copie o Access Token (produção)
+      3. Cole em MP_ACCESS_TOKEN no <script> lá embaixo
+
+    GOOGLE SHEETS:
+      1. Crie uma planilha no Google Sheets
+      2. Acesse Extensões > Apps Script
+      3. Cole o script fornecido no final deste arquivo
+      4. Publique como App da Web (Anyone can access)
+      5. Cole a URL gerada em GOOGLE_SCRIPT_URL no <script>
+  */
+
+  :root {
+    --orange: #F47920;
+    --orange-dark: #C45E0A;
+    --orange-glow: rgba(244,121,32,0.15);
+    --black: #0A0A0A;
+    --black-mid: #111111;
+    --black-card: #161616;
+    --black-border: #222222;
+    --white: #FFFFFF;
+    --gray-dim: #888888;
+    --gray-mid: #AAAAAA;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'Barlow', sans-serif;
+    font-weight: 400;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.6;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 4rem; height: 72px;
+    background: rgba(10,10,10,0.93);
+    border-bottom: 1px solid var(--black-border);
+    backdrop-filter: blur(12px);
+  }
+  .nav-links { display: flex; gap: 2.5rem; list-style: none; }
+  .nav-links a {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 13px;
+    font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--gray-mid); text-decoration: none; transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--orange); }
+  .nav-cta {
+    background: var(--orange) !important; color: var(--black) !important;
+    padding: 8px 20px; border-radius: 3px; font-weight: 700 !important;
+  }
+  .nav-cta:hover { background: var(--orange-dark) !important; color: var(--white) !important; }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    position: relative; padding: 8rem 2rem 4rem; overflow: hidden;
+  }
+  .hero-bg-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(244,121,32,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(244,121,32,0.04) 1px, transparent 1px);
+    background-size: 60px 60px; z-index: 0;
+  }
+  .hero-bg-radial {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    width: 800px; height: 800px;
+    background: radial-gradient(ellipse, rgba(244,121,32,0.12) 0%, transparent 70%);
+    z-index: 0;
+  }
+  .hero-tag {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 12px;
+    font-weight: 600; letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--orange); margin-bottom: 1.5rem; position: relative; z-index: 1;
+  }
+  .hero-tag::before, .hero-tag::after { content: '──'; margin: 0 1rem; opacity: 0.5; }
+  .hero h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(5rem, 14vw, 11rem);
+    line-height: 0.9; letter-spacing: 0.04em; color: var(--white);
+    position: relative; z-index: 1;
+    text-shadow: 0 0 80px rgba(244,121,32,0.3);
+  }
+  .hero h1 span { color: var(--orange); }
+  .hero-sub {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 1.4rem;
+    font-weight: 400; letter-spacing: 0.08em; color: var(--gray-mid);
+    margin-top: 1.5rem; text-transform: uppercase; position: relative; z-index: 1;
+  }
+  .hero-actions {
+    display: flex; gap: 1rem; margin-top: 3rem;
+    position: relative; z-index: 1; flex-wrap: wrap; justify-content: center;
+  }
+  .btn-primary {
+    display: inline-block; background: var(--orange); color: var(--black);
+    font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none;
+    padding: 14px 36px; border-radius: 3px; transition: all 0.2s;
+    border: 2px solid var(--orange); cursor: pointer;
+  }
+  .btn-primary:hover { background: var(--orange-dark); border-color: var(--orange-dark); }
+  .btn-outline {
+    display: inline-block; background: transparent; color: var(--white);
+    font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none;
+    padding: 14px 36px; border-radius: 3px; border: 2px solid var(--black-border);
+    transition: all 0.2s; cursor: pointer;
+  }
+  .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
+  .hero-scroll {
+    position: absolute; bottom: 2.5rem; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    color: var(--gray-dim); font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+    z-index: 1; animation: bounce 2s infinite;
+  }
+  .hero-scroll::after {
+    content: ''; width: 1px; height: 40px;
+    background: linear-gradient(to bottom, var(--gray-dim), transparent);
+  }
+  @keyframes bounce {
+    0%,100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(6px); }
+  }
+
+  /* STATS */
+  .stats-bar {
+    background: var(--black-card);
+    border-top: 1px solid var(--black-border);
+    border-bottom: 1px solid var(--black-border);
+    padding: 2rem 4rem; display: flex; justify-content: center;
+    gap: 4rem; flex-wrap: wrap; position: relative; z-index: 1;
+  }
+  .stat-item { text-align: center; }
+  .stat-number { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; color: var(--orange); line-height: 1; }
+  .stat-label {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 12px;
+    font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--gray-dim); margin-top: 4px;
+  }
+
+  /* SECTIONS */
+  section { position: relative; z-index: 1; }
+  .section-header { text-align: center; margin-bottom: 4rem; }
+  .section-eyebrow {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.25em; text-transform: uppercase; color: var(--orange);
+    margin-bottom: 1rem; display: block;
+  }
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3rem, 6vw, 5rem); line-height: 1; letter-spacing: 0.04em;
+  }
+  .section-desc {
+    font-size: 1.05rem; color: var(--gray-mid); max-width: 560px;
+    margin: 1.25rem auto 0; line-height: 1.7;
+  }
+  .divider-line { width: 60px; height: 3px; background: var(--orange); margin: 1.25rem auto 0; }
+
+  /* MANUAL */
+  .manual-section { padding: 6rem 4rem; background: var(--black); }
+  .manual-card {
+    max-width: 900px; margin: 0 auto; background: var(--black-card);
+    border: 1px solid var(--black-border); border-radius: 4px;
+    overflow: hidden; display: flex; align-items: stretch;
+  }
+  .manual-accent { width: 6px; background: var(--orange); flex-shrink: 0; }
+  .manual-content { padding: 3rem; flex: 1; }
+  .manual-icon { font-size: 3rem; margin-bottom: 1.5rem; display: block; }
+  .manual-content h3 {
+    font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem;
+    letter-spacing: 0.04em; margin-bottom: 1rem;
+  }
+  .manual-content p { color: var(--gray-mid); line-height: 1.7; margin-bottom: 2rem; max-width: 500px; }
+  .manual-features { display: flex; gap: 2rem; margin-bottom: 2.5rem; flex-wrap: wrap; }
+  .manual-feat {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--gray-mid);
+  }
+  .manual-feat::before {
+    content: ''; width: 6px; height: 6px; background: var(--orange);
+    border-radius: 50%; flex-shrink: 0;
+  }
+  .manual-visual {
+    width: 280px; flex-shrink: 0; background: #0D0D0D;
+    display: flex; align-items: center; justify-content: center;
+    padding: 2rem; position: relative; overflow: hidden;
+  }
+  .manual-visual::before {
+    content: ''; position: absolute; inset: 0;
+    background: repeating-linear-gradient(45deg, transparent, transparent 20px,
+      rgba(244,121,32,0.03) 20px, rgba(244,121,32,0.03) 21px);
+  }
+  .manual-pdf-icon { text-align: center; position: relative; z-index: 1; }
+  .pdf-box {
+    width: 100px; height: 120px; background: var(--black-card);
+    border: 2px solid var(--orange); border-radius: 4px;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 8px; margin: 0 auto 1rem;
+  }
+  .pdf-box-top { font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; color: var(--orange); letter-spacing: 0.1em; }
+  .pdf-box-icon { font-size: 2rem; }
+  .pdf-label {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.15em; text-transform: uppercase; color: var(--gray-dim);
+  }
+
+  /* HISTORIA */
+  .history-section {
+    padding: 6rem 4rem; background: var(--black-mid);
+    border-top: 1px solid var(--black-border);
+    border-bottom: 1px solid var(--black-border);
+  }
+  .history-grid {
+    max-width: 1100px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start;
+  }
+  .history-text p { color: var(--gray-mid); line-height: 1.85; margin-bottom: 1.25rem; font-size: 1.05rem; }
+  .history-text p strong { color: var(--orange); font-weight: 600; }
+  .history-timeline { display: flex; flex-direction: column; gap: 0; }
+  .timeline-item { display: flex; gap: 1.5rem; position: relative; }
+  .timeline-left { display: flex; flex-direction: column; align-items: center; width: 40px; flex-shrink: 0; }
+  .timeline-dot {
+    width: 14px; height: 14px; border-radius: 50%; background: var(--orange);
+    border: 2px solid var(--black-mid); box-shadow: 0 0 0 3px var(--orange-glow);
+    flex-shrink: 0; margin-top: 4px;
+  }
+  .timeline-line { flex: 1; width: 1px; background: var(--black-border); margin: 6px 0; }
+  .timeline-content { padding-bottom: 2.5rem; flex: 1; }
+  .timeline-year { font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; color: var(--orange); letter-spacing: 0.08em; margin-bottom: 4px; }
+  .timeline-title { font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; }
+  .timeline-desc { font-size: 0.9rem; color: var(--gray-dim); line-height: 1.6; }
+
+  /* ═══════════════════════════════════════
+     EVENTOS / INGRESSOS
+  ═══════════════════════════════════════ */
+  .events-section { padding: 6rem 4rem; background: var(--black); }
+
+  .event-card {
+    max-width: 860px; margin: 0 auto;
+    background: var(--black-card); border: 1px solid var(--orange);
+    border-radius: 4px; overflow: hidden;
+  }
+
+  .event-badge-top {
+    background: var(--orange); color: var(--black);
+    font-family: 'Barlow Condensed', sans-serif; font-size: 12px;
+    font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+    padding: 6px 0; text-align: center;
+  }
+
+  .event-header { padding: 2rem 2.5rem 1.5rem; border-bottom: 1px solid var(--black-border); }
+  .event-op-tag {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.22em; text-transform: uppercase; color: var(--orange); margin-bottom: 0.5rem;
+  }
+  .event-name {
+    font-family: 'Bebas Neue', sans-serif; font-size: clamp(2.5rem, 6vw, 4rem);
+    letter-spacing: 0.04em; line-height: 1; margin-bottom: 1rem;
+  }
+  .event-meta {
+    display: flex; flex-wrap: wrap; gap: 1.5rem;
+    font-family: 'Barlow Condensed', sans-serif; font-size: 13px;
+    font-weight: 600; color: var(--gray-dim); letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .event-meta span { display: flex; align-items: center; gap: 5px; }
+  .event-body { padding: 2rem 2.5rem; }
+  .event-desc { font-size: 0.95rem; color: var(--gray-mid); line-height: 1.7; margin-bottom: 2rem; }
+
+  /* TICKET TYPES */
+  .block-label {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.22em; text-transform: uppercase; color: var(--orange);
+    margin-bottom: 0.85rem; display: flex; align-items: center; gap: 8px;
+  }
+  .block-label::after { content: ''; flex: 1; height: 1px; background: var(--black-border); }
+
+  .ticket-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.75rem; margin-bottom: 2rem;
+  }
+  .ticket-opt {
+    padding: 1rem 1.1rem; border: 1px solid var(--black-border);
+    border-radius: 3px; cursor: pointer; transition: all 0.15s;
+    background: transparent; text-align: left; position: relative;
+  }
+  .ticket-opt:hover { border-color: var(--gray-dim); }
+  .ticket-opt.active { border-color: var(--orange); background: var(--orange-glow); }
+  .ticket-opt.active::after {
+    content: '✓'; position: absolute; top: 8px; right: 10px;
+    font-size: 11px; color: var(--orange); font-weight: 700;
+  }
+  .ticket-name {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--white); margin-bottom: 6px;
+  }
+  .ticket-price {
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; color: var(--orange); line-height: 1; margin-bottom: 8px;
+  }
+  .ticket-includes { font-size: 11px; color: var(--gray-dim); line-height: 1.5; }
+  .ticket-includes li { list-style: none; padding-left: 0; }
+  .ticket-includes li::before { content: '+ '; color: var(--orange); }
+
+  /* ARMY SELECTOR */
+  .army-selector { margin-bottom: 2rem; }
+  .army-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .army-opt {
+    padding: 1rem 1.25rem; border: 1px solid var(--black-border);
+    border-radius: 3px; cursor: pointer; transition: all 0.15s;
+    background: transparent; text-align: center;
+    font-family: 'Barlow Condensed', sans-serif; font-size: 14px;
+    font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--gray-mid);
+  }
+  .army-opt:hover { border-color: var(--gray-dim); color: var(--white); }
+  .army-opt.active { border-color: var(--orange); background: var(--orange-glow); color: var(--white); }
+  .army-name { font-size: 15px; color: inherit; }
+  .army-sub { font-size: 11px; color: var(--gray-dim); letter-spacing: 0.05em; margin-top: 3px; }
+
+  /* ADDONS */
+  .addons-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.6rem; margin-bottom: 2rem; }
+  .addon-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border: 1px solid var(--black-border);
+    border-radius: 3px; cursor: pointer; transition: all 0.15s;
+    background: transparent;
+  }
+  .addon-item:hover { border-color: var(--gray-dim); }
+  .addon-item.selected { border-color: var(--orange); background: var(--orange-glow); }
+  .addon-check {
+    width: 16px; height: 16px; border: 1px solid var(--black-border);
+    border-radius: 2px; flex-shrink: 0; display: flex; align-items: center;
+    justify-content: center; font-size: 10px; transition: all 0.15s;
+  }
+  .addon-item.selected .addon-check { background: var(--orange); border-color: var(--orange); color: var(--black); font-weight: 700; }
+  .addon-name { flex: 1; font-size: 13px; color: var(--gray-mid); line-height: 1.3; }
+  .addon-item.selected .addon-name { color: var(--white); }
+  .addon-price {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 13px;
+    font-weight: 700; color: var(--orange); white-space: nowrap;
+  }
+
+  /* ARMY ADDON NOTE */
+  .army-addon-note {
+    font-size: 11px; color: var(--gray-dim); font-style: italic;
+    padding: 8px 12px; border-left: 2px solid var(--orange);
+    margin-bottom: 1.25rem; line-height: 1.5;
+  }
+
+  /* SUMMARY / FOOTER */
+  .event-footer {
+    padding: 1.5rem 2.5rem; border-top: 1px solid var(--black-border);
+    background: #0D0D0D; display: flex; align-items: center;
+    justify-content: space-between; gap: 1.5rem; flex-wrap: wrap;
+  }
+  .summary-box { display: flex; flex-direction: column; gap: 4px; }
+  .summary-ticket {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 12px;
+    font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gray-dim);
+  }
+  .summary-total-label {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 11px;
+    font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gray-dim);
+  }
+  .summary-total {
+    font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem;
+    color: var(--white); line-height: 1;
+  }
+  .btn-buy {
+    background: var(--orange); color: var(--black);
+    font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none;
+    padding: 16px 36px; border-radius: 3px; border: none;
+    cursor: pointer; transition: background 0.2s; white-space: nowrap;
+  }
+  .btn-buy:hover { background: var(--orange-dark); }
+  .btn-buy:disabled { background: #444; color: #888; cursor: not-allowed; }
+
+  /* ═══════════════════════════════════════
+     MODAL / POPUP
+  ═══════════════════════════════════════ */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.88); backdrop-filter: blur(6px);
+    align-items: center; justify-content: center; padding: 1.5rem;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--black-card); border: 1px solid var(--black-border);
+    border-top: 3px solid var(--orange); border-radius: 4px;
+    width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto;
+    animation: slideUp 0.25s ease;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .modal-header {
+    padding: 1.75rem 2rem 1.25rem;
+    border-bottom: 1px solid var(--black-border);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+  }
+  .modal-title {
+    font-family: 'Bebas Neue', sans-serif; font-size: 2rem;
+    letter-spacing: 0.04em; line-height: 1;
+  }
+  .modal-subtitle {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 13px;
+    font-weight: 600; letter-spacing: 0.08em; color: var(--gray-dim);
+    text-transform: uppercase; margin-top: 4px;
+  }
+  .modal-close {
+    background: transparent; border: 1px solid var(--black-border);
+    color: var(--gray-mid); width: 32px; height: 32px; border-radius: 3px;
+    cursor: pointer; font-size: 16px; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; transition: all 0.15s;
+  }
+  .modal-close:hover { border-color: var(--orange); color: var(--white); }
+
+  .modal-summary {
+    padding: 1rem 2rem; background: #0D0D0D;
+    border-bottom: 1px solid var(--black-border);
+    font-family: 'Barlow Condensed', sans-serif; font-size: 13px;
+    letter-spacing: 0.05em; color: var(--gray-mid);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .modal-summary-line { display: flex; justify-content: space-between; }
+  .modal-summary-total {
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem;
+    color: var(--orange); margin-top: 4px;
+  }
+
+  .modal-body { padding: 1.75rem 2rem; }
+
+  .form-group { margin-bottom: 1.25rem; }
+  .form-label {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.15em; text-transform: uppercase; color: var(--gray-dim);
+    display: block; margin-bottom: 6px;
+  }
+  .form-input {
+    width: 100%; padding: 11px 14px;
+    background: #0D0D0D; border: 1px solid var(--black-border);
+    border-radius: 3px; color: var(--white);
+    font-family: 'Barlow', sans-serif; font-size: 14px;
+    transition: border-color 0.15s; outline: none;
+  }
+  .form-input:focus { border-color: var(--orange); }
+  .form-input::placeholder { color: #555; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+  .modal-footer {
+    padding: 1.25rem 2rem 1.75rem;
+    border-top: 1px solid var(--black-border);
+    display: flex; flex-direction: column; gap: 0.75rem;
+  }
+  .btn-confirm {
+    width: 100%; background: var(--orange); color: var(--black);
+    font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 16px; border-radius: 3px; border: none;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .btn-confirm:hover { background: var(--orange-dark); }
+  .btn-confirm:disabled { background: #333; color: #666; cursor: not-allowed; }
+  .btn-confirm-loading { display: none; }
+
+  .modal-note {
+    font-size: 11px; color: var(--gray-dim); text-align: center; line-height: 1.5;
+  }
+
+  /* ── INSTAGRAM ── */
+  .instagram-section {
+    padding: 4rem; background: var(--black-mid);
+    border-top: 1px solid var(--black-border); text-align: center;
+  }
+  .instagram-handle {
+    font-family: 'Bebas Neue', sans-serif; font-size: 3rem; letter-spacing: 0.08em;
+    color: var(--white); text-decoration: none; transition: color 0.2s;
+  }
+  .instagram-handle:hover { color: var(--orange); }
+  .instagram-sub {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 600;
+    letter-spacing: 0.2em; text-transform: uppercase; color: var(--gray-dim); margin-top: 0.5rem;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    background: #080808; border-top: 1px solid var(--black-border);
+    padding: 2.5rem 4rem; display: flex; align-items: center;
+    justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+    position: relative; z-index: 1;
+  }
+  .footer-text {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 13px;
+    font-weight: 600; letter-spacing: 0.1em; color: var(--gray-dim); text-transform: uppercase;
+  }
+  .footer-links { display: flex; gap: 1.5rem; list-style: none; }
+  .footer-links a {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--gray-dim);
+    text-decoration: none; transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--orange); }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(100px);
+    background: var(--black-card); border: 1px solid var(--black-border);
+    border-left: 3px solid var(--orange);
+    padding: 1rem 1.5rem; border-radius: 3px;
+    font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 600;
+    letter-spacing: 0.06em; color: var(--white); z-index: 9999;
+    transition: transform 0.3s ease;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    nav { padding: 0 1.5rem; }
+    .nav-links { gap: 1rem; }
+    .manual-card { flex-direction: column; }
+    .manual-visual { width: 100%; min-height: 160px; }
+    .history-grid { grid-template-columns: 1fr; gap: 3rem; }
+    .manual-section, .history-section, .events-section { padding: 4rem 1.5rem; }
+    .stats-bar { padding: 2rem 1.5rem; gap: 2rem; }
+    .instagram-section, footer { padding: 2.5rem 1.5rem; }
+    footer { flex-direction: column; text-align: center; }
+    .event-body { padding: 1.5rem; }
+    .event-header { padding: 1.5rem; }
+    .event-footer { padding: 1.25rem 1.5rem; }
+    .army-grid { grid-template-columns: 1fr 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+    .modal-body, .modal-header, .modal-footer { padding-left: 1.25rem; padding-right: 1.25rem; }
+    .modal-summary { padding-left: 1.25rem; padding-right: 1.25rem; }
+  }
+  @media (max-width: 480px) {
+    .army-grid { grid-template-columns: 1fr 1fr; }
+    .ticket-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up { animation: fadeUp 0.7s ease both; }
+  .fade-up-2 { animation-delay: 0.15s; }
+  .fade-up-3 { animation-delay: 0.3s; }
+  .fade-up-4 { animation-delay: 0.45s; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <svg height="38" viewBox="0 0 220 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="4" width="110" height="52" rx="6" fill="#111" stroke="#333" stroke-width="1"/>
+    <path d="M20 44 L20 16 L38 44 L56 16 L56 44" stroke="white" stroke-width="6" stroke-linejoin="round" fill="none"/>
+    <rect x="62" y="4" width="52" height="52" rx="4" fill="#F47920"/>
+    <path d="M72 16 L100 16 Q114 16 114 30 Q114 44 100 44 L72 44 Z M82 24 L82 36 L98 36 Q106 36 106 30 Q106 24 98 24 Z" fill="white"/>
+    <text x="125" y="35" font-family="Bebas Neue,sans-serif" font-size="18" fill="white" letter-spacing="2">MILSIMDEV</text>
+  </svg>
+  <ul class="nav-links">
+    <li><a href="#manual">Manual</a></li>
+    <li><a href="#historia">História</a></li>
+    <li><a href="#eventos">Eventos</a></li>
+    <li><a href="https://instagram.com/milsimdev" target="_blank">Instagram</a></li>
+    <li><a href="#eventos" class="nav-cta">Comprar Ingresso</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg-grid"></div>
+  <div class="hero-bg-radial"></div>
+  <p class="hero-tag fade-up">Airsoft · Simulação Militar · Operações Táticas</p>
+  <h1 class="fade-up fade-up-2">MILSIM<span>DEV</span></h1>
+  <p class="hero-sub fade-up fade-up-3">Operações que testam seus limites</p>
+  <div class="hero-actions fade-up fade-up-4">
+    <a href="#eventos" class="btn-primary">Ver Próximo Evento</a>
+    <a href="#manual" class="btn-outline">Baixar Manual de Regras</a>
+  </div>
+  <div class="hero-scroll">Scroll</div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat-item"><div class="stat-number">12+</div><div class="stat-label">Operações Realizadas</div></div>
+  <div class="stat-item"><div class="stat-number">800+</div><div class="stat-label">Operadores no Campo</div></div>
+  <div class="stat-item"><div class="stat-number">4</div><div class="stat-label">Exércitos Ativos</div></div>
+  <div class="stat-item"><div class="stat-number">100%</div><div class="stat-label">Imersão Tática</div></div>
+</div>
+
+<!-- MANUAL -->
+<section class="manual-section" id="manual">
+  <div class="section-header">
+    <span class="section-eyebrow">Regulamento Oficial</span>
+    <h2 class="section-title">Manual de Regras</h2>
+    <div class="divider-line"></div>
+    <p class="section-desc">Conheça as regras de conduta, engajamento e protocolos táticos que garantem a segurança e a imersão nas nossas operações.</p>
+  </div>
+  <div class="manual-card">
+    <div class="manual-accent"></div>
+    <div class="manual-content">
+      <span class="manual-icon">📋</span>
+      <h3>Manual Operacional MilsimDev</h3>
+      <p>Documento oficial com todas as regras de engajamento, protocolos de segurança, hierarquia de comando e regulamentos de conduta.</p>
+      <div class="manual-features">
+        <div class="manual-feat">Regras de Engajamento</div>
+        <div class="manual-feat">Protocolos de Segurança</div>
+        <div class="manual-feat">Hierarquia Militar</div>
+        <div class="manual-feat">Equipamentos Permitidos</div>
+        <div class="manual-feat">Código de Conduta</div>
+      </div>
+      <a href="#" class="btn-primary" onclick="alert('Link do manual será disponibilizado em breve!'); return false;">⬇ Baixar Manual (PDF)</a>
+    </div>
+    <div class="manual-visual">
+      <div class="manual-pdf-icon">
+        <div class="pdf-box">
+          <div class="pdf-box-top">PDF</div>
+          <div class="pdf-box-icon">📄</div>
+        </div>
+        <div class="pdf-label">Manual Oficial v3.2</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HISTÓRIA -->
+<section class="history-section" id="historia">
+  <div class="section-header">
+    <span class="section-eyebrow">Nossa Trajetória</span>
+    <h2 class="section-title">A História da MilsimDev</h2>
+    <div class="divider-line"></div>
+  </div>
+  <div class="history-grid">
+    <div class="history-text">
+      <p>A <strong>MilsimDev</strong> nasceu da paixão de um grupo de entusiastas do airsoft que queriam mais do que simples batalhas — queriam <strong>experiências táticas autênticas</strong>, imersivas e organizadas com o rigor de operações militares reais.</p>
+      <p>Fundada com a missão de elevar o padrão do milsim no Brasil, a MilsimDev construiu uma comunidade unida pela disciplina, respeito e amor pelo esporte. Cada operação é cuidadosamente planejada para oferecer <strong>cenários realistas</strong>, narrativas envolventes e desafios táticos de alto nível.</p>
+      <p>Com operações em terrenos variados — florestas, estruturas urbanas e ambientes noturnos — criamos ambientes onde <strong>estratégia, trabalho em equipe e coragem</strong> determinam o resultado da missão.</p>
+      <p>Hoje, a MilsimDev é referência nacional em organização de eventos de simulação militar, reunindo centenas de operadores apaixonados em cada missão.</p>
+    </div>
+    <div class="history-timeline">
+      <div class="timeline-item">
+        <div class="timeline-left"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+        <div class="timeline-content">
+          <div class="timeline-year">2020</div>
+          <div class="timeline-title">Fundação</div>
+          <div class="timeline-desc">Grupo de apaixonados decide criar eventos de airsoft com imersão militar real.</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-left"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+        <div class="timeline-content">
+          <div class="timeline-year">2021</div>
+          <div class="timeline-title">Primeira Operação Oficial</div>
+          <div class="timeline-desc">Operação BLACKOUT — 80 operadores, 2 facções, 12 horas de missão contínua.</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-left"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+        <div class="timeline-content">
+          <div class="timeline-year">2022</div>
+          <div class="timeline-title">Expansão de Exércitos</div>
+          <div class="timeline-desc">Introdução de 4 facções distintas com patches exclusivos e hierarquia própria.</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-left"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+        <div class="timeline-content">
+          <div class="timeline-year">2023</div>
+          <div class="timeline-title">Operações Noturnas</div>
+          <div class="timeline-desc">Primeiro evento 24h com protocolos de combate noturno e equipamentos NVG.</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-left"><div class="timeline-dot"></div><div class="timeline-line"></div></div>
+        <div class="timeline-content">
+          <div class="timeline-year">2024–2025</div>
+          <div class="timeline-title">Comunidade Nacional</div>
+          <div class="timeline-desc">800+ operadores ativos, parcerias estratégicas e presença em múltiplos estados.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EVENTOS / INGRESSOS -->
+<section class="events-section" id="eventos">
+  <div class="section-header">
+    <span class="section-eyebrow">Próxima Operação</span>
+    <h2 class="section-title">Garanta Seu Ingresso</h2>
+    <div class="divider-line"></div>
+    <p class="section-desc">Escolha seu ingresso, selecione seu exército e personalize com itens exclusivos.</p>
+  </div>
+
+  <div class="event-card">
+    <div class="event-badge-top">🔴 INSCRIÇÕES ABERTAS · VAGAS LIMITADAS</div>
+    <div class="event-header">
+      <div class="event-op-tag">Operação 001 · 2025</div>
+      <div class="event-name">IRON WOLF</div>
+      <div class="event-meta">
+        <span>📅 14 Jun 2025</span>
+        <span>📍 Interior de SP</span>
+        <span>⏱ 16 horas</span>
+        <span>👥 Vagas Limitadas</span>
+      </div>
+    </div>
+
+    <div class="event-body">
+      <p class="event-desc">Operação de 16 horas em terreno florestal com dois exércitos em confronto direto. Infiltração, extração e combate urbano simulado com briefing tático completo. Apenas os mais preparados chegam ao objetivo.</p>
+
+      <!-- TIPO DE INGRESSO -->
+      <div class="block-label">Tipo de Ingresso</div>
+      <div class="ticket-grid" id="ticketGrid">
+        <div class="ticket-opt active" onclick="selectTicket(this,0)" data-idx="0">
+          <div class="ticket-name">Soldado</div>
+          <div class="ticket-price">R$ 280</div>
+          <ul class="ticket-includes">
+            <li>Participação no Evento</li>
+          </ul>
+        </div>
+        <div class="ticket-opt" onclick="selectTicket(this,1)" data-idx="1">
+          <div class="ticket-name">Sargento</div>
+          <div class="ticket-price">R$ 380</div>
+          <ul class="ticket-includes">
+            <li>Participação no Evento</li>
+            <li>1 Patch do Evento</li>
+          </ul>
+        </div>
+        <div class="ticket-opt" onclick="selectTicket(this,2)" data-idx="2">
+          <div class="ticket-name">Capitão</div>
+          <div class="ticket-price">R$ 480</div>
+          <ul class="ticket-includes">
+            <li>Participação no Evento</li>
+            <li>1 Patch do Evento</li>
+            <li>1 Patch do Exército Escolhido</li>
+          </ul>
+        </div>
+        <div class="ticket-opt" onclick="selectTicket(this,3)" data-idx="3">
+          <div class="ticket-name">Comandante</div>
+          <div class="ticket-price">R$ 620</div>
+          <ul class="ticket-includes">
+            <li>Participação no Evento</li>
+            <li>1 Patch do Evento</li>
+            <li>1 Patch de cada Exército</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- ESCOLHA DO EXÉRCITO -->
+      <div class="army-selector">
+        <div class="block-label">Escolha seu Exército</div>
+        <div class="army-grid" id="armyGrid">
+          <div class="army-opt" onclick="selectArmy(this,'A')" data-army="A">
+            <div class="army-name">⚔️ Exército A</div>
+            <div class="army-sub">Força de Ataque — Norte</div>
+          </div>
+          <div class="army-opt" onclick="selectArmy(this,'B')" data-army="B">
+            <div class="army-name">🛡️ Exército B</div>
+            <div class="army-sub">Força de Defesa — Sul</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ITENS ADICIONAIS -->
+      <div class="block-label">Itens Adicionais (opcional)</div>
+      <div id="armyAddonNote" class="army-addon-note" style="display:none;"></div>
+      <div class="addons-grid" id="addonsGrid">
+        <div class="addon-item" onclick="toggleAddon(this,'patch_evento_extra',40)" data-key="patch_evento_extra">
+          <div class="addon-check">✓</div>
+          <div class="addon-name">Patch do Evento Extra</div>
+          <div class="addon-price">+R$40</div>
+        </div>
+        <div class="addon-item" data-key="patch_exercito_a" onclick="toggleAddon(this,'patch_exercito_a',45)">
+          <div class="addon-check">✓</div>
+          <div class="addon-name">Patch do Exército A</div>
+          <div class="addon-price">+R$45</div>
+        </div>
+        <div class="addon-item" data-key="patch_exercito_b" onclick="toggleAddon(this,'patch_exercito_b',45)">
+          <div class="addon-check">✓</div>
+          <div class="addon-name">Patch do Exército B</div>
+          <div class="addon-price">+R$45</div>
+        </div>
+        <div class="addon-item" onclick="toggleAddon(this,'torniquete',80)" data-key="torniquete">
+          <div class="addon-check">✓</div>
+          <div class="addon-name">Torniquete Tático</div>
+          <div class="addon-price">+R$80</div>
+        </div>
+        <div class="addon-item" onclick="toggleAddon(this,'camisa',120)" data-key="camisa">
+          <div class="addon-check">✓</div>
+          <div class="addon-name">Camisa Exclusiva IRON WOLF</div>
+          <div class="addon-price">+R$120</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="event-footer">
+      <div class="summary-box">
+        <div class="summary-ticket" id="summaryTicketName">Soldado</div>
+        <div class="summary-total-label">Total</div>
+        <div class="summary-total" id="summaryTotal">R$ 280</div>
+      </div>
+      <button class="btn-buy" id="btnBuy" onclick="openModal()">Garantir Vaga →</button>
+    </div>
+  </div>
+</section>
+
+<!-- INSTAGRAM -->
+<section class="instagram-section">
+  <p class="instagram-sub">Siga a comunidade</p>
+  <a href="https://instagram.com/milsimdev" target="_blank" class="instagram-handle">@milsimdev</a>
+  <p class="instagram-sub" style="margin-top: 0.5rem;">Fotos, vídeos e novidades das operações</p>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <svg height="28" viewBox="0 0 220 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="4" width="110" height="52" rx="6" fill="#111" stroke="#333" stroke-width="1"/>
+    <path d="M20 44 L20 16 L38 44 L56 16 L56 44" stroke="white" stroke-width="6" stroke-linejoin="round" fill="none"/>
+    <rect x="62" y="4" width="52" height="52" rx="4" fill="#F47920"/>
+    <path d="M72 16 L100 16 Q114 16 114 30 Q114 44 100 44 L72 44 Z M82 24 L82 36 L98 36 Q106 36 106 30 Q106 24 98 24 Z" fill="white"/>
+    <text x="125" y="35" font-family="Bebas Neue,sans-serif" font-size="18" fill="white" letter-spacing="2">MILSIMDEV</text>
+  </svg>
+  <span class="footer-text">© 2025 MilsimDev · Todos os direitos reservados</span>
+  <ul class="footer-links">
+    <li><a href="#manual">Manual</a></li>
+    <li><a href="#historia">História</a></li>
+    <li><a href="#eventos">Eventos</a></li>
+    <li><a href="https://instagram.com/milsimdev" target="_blank">Instagram</a></li>
+  </ul>
+</footer>
+
+<!-- ═══════════════════════════════════════
+     MODAL DE DADOS DO COMPRADOR
+═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modalTitle">Dados do Operador</div>
+        <div class="modal-subtitle">Preencha para confirmar sua inscrição</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()" aria-label="Fechar">✕</button>
+    </div>
+
+    <div class="modal-summary" id="modalSummary">
+      <!-- preenchido via JS -->
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="inputNome">Nome Completo *</label>
+        <input class="form-input" type="text" id="inputNome" placeholder="Seu nome completo" autocomplete="name" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="inputEquipe">Equipe / Pelotão</label>
+          <input class="form-input" type="text" id="inputEquipe" placeholder="Nome da equipe (opcional)" autocomplete="organization">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="inputTelefone">Telefone / WhatsApp *</label>
+          <input class="form-input" type="tel" id="inputTelefone" placeholder="(11) 99999-9999" autocomplete="tel" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="inputCPF">CPF *</label>
+        <input class="form-input" type="text" id="inputCPF" placeholder="000.000.000-00" maxlength="14" required>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-confirm" id="btnConfirm" onclick="confirmarCompra()">
+        <span id="btnConfirmText">Ir para Pagamento →</span>
+        <span id="btnConfirmLoading" style="display:none;">Processando...</span>
+      </button>
+      <div class="modal-note">
+        🔒 Seus dados são protegidos. A confirmação da inscrição ocorre somente após o pagamento aprovado pelo Mercado Pago.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   ⚙️  CONFIGURAÇÃO — edite apenas esta seção
+═══════════════════════════════════════════════════ */
+
+// URL da função serverless na Vercel (não precisa alterar)
+const MP_API_URL = "/api/create-preference";
+
+// 2. URL do Google Apps Script para salvar na planilha
+//    Veja instruções de configuração no final deste arquivo (comentário)
+const GOOGLE_SCRIPT_URL = "SUA_URL_DO_APPS_SCRIPT_AQUI";
+
+// 3. URL de retorno após pagamento aprovado (sua página de confirmação)
+const MP_SUCCESS_URL = window.location.origin + window.location.pathname + "?status=approved";
+const MP_FAILURE_URL = window.location.origin + window.location.pathname + "?status=failure";
+const MP_PENDING_URL = window.location.origin + window.location.pathname + "?status=pending";
+
+/* ═══════════════════════════════════════════════════
+   ESTADO DO PEDIDO
+═══════════════════════════════════════════════════ */
+const TICKETS = [
+  { name: "Soldado",    price: 280, includesPatchEvento: false, includesPatchExercito: false, includesBothExercitos: false },
+  { name: "Sargento",  price: 380, includesPatchEvento: true,  includesPatchExercito: false, includesBothExercitos: false },
+  { name: "Capitão",   price: 480, includesPatchEvento: true,  includesPatchExercito: true,  includesBothExercitos: false },
+  { name: "Comandante",price: 620, includesPatchEvento: true,  includesPatchExercito: true,  includesBothExercitos: true  },
+];
+
+const ADDONS_CATALOG = {
+  patch_evento_extra: { label: "Patch do Evento Extra",         price: 40  },
+  patch_exercito_a:   { label: "Patch do Exército A",            price: 45  },
+  patch_exercito_b:   { label: "Patch do Exército B",            price: 45  },
+  torniquete:         { label: "Torniquete Tático",              price: 80  },
+  camisa:             { label: "Camisa Exclusiva IRON WOLF",     price: 120 },
+};
+
+let selectedTicketIdx = 0;
+let selectedArmy      = null;
+let selectedAddons    = {};   // key -> true
+
+/* ─── helpers ─── */
+function calcTotal() {
+  let t = TICKETS[selectedTicketIdx].price;
+  for (const key in selectedAddons) { if (selectedAddons[key]) t += ADDONS_CATALOG[key].price; }
+  return t;
+}
+
+function fmtBRL(v) { return "R$ " + v.toLocaleString('pt-BR'); }
+
+function updateSummaryBar() {
+  document.getElementById('summaryTicketName').textContent = TICKETS[selectedTicketIdx].name;
+  document.getElementById('summaryTotal').textContent = fmtBRL(calcTotal());
+}
+
+function updateArmyAddonNote() {
+  const tk = TICKETS[selectedTicketIdx];
+  const note = document.getElementById('armyAddonNote');
+  if (tk.includesBothExercitos) {
+    note.style.display = 'block';
+    note.textContent = 'Seu ingresso Comandante já inclui o Patch dos dois exércitos. Os itens abaixo são unidades extras.';
+  } else if (tk.includesPatchExercito && selectedArmy) {
+    note.style.display = 'block';
+    note.textContent = `Seu ingresso Capitão já inclui o Patch do Exército ${selectedArmy}. Adicione itens extras abaixo se quiser.`;
+  } else {
+    note.style.display = 'none';
+  }
+}
+
+/* ─── ticket selection ─── */
+function selectTicket(el, idx) {
+  document.querySelectorAll('.ticket-opt').forEach(o => o.classList.remove('active'));
+  el.classList.add('active');
+  selectedTicketIdx = idx;
+  updateArmyAddonNote();
+  updateSummaryBar();
+}
+
+/* ─── army selection ─── */
+function selectArmy(el, armyName) {
+  document.querySelectorAll('.army-opt').forEach(o => o.classList.remove('active'));
+  el.classList.add('active');
+  selectedArmy = armyName;
+  updateArmyAddonNote();
+}
+
+/* ─── addon toggle ─── */
+function toggleAddon(el, key, price) {
+  el.classList.toggle('selected');
+  selectedAddons[key] = el.classList.contains('selected');
+  updateSummaryBar();
+}
+
+/* ─── modal ─── */
+function openModal() {
+  if (!selectedArmy) {
+    showToast('⚠️ Selecione seu Exército antes de continuar.');
+    document.getElementById('armyGrid').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  fillModalSummary();
+  document.getElementById('modalOverlay').classList.add('open');
+  document.getElementById('inputNome').focus();
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+function fillModalSummary() {
+  const tk = TICKETS[selectedTicketIdx];
+  const addonsDesc = Object.keys(selectedAddons)
+    .filter(k => selectedAddons[k])
+    .map(k => ADDONS_CATALOG[k].label)
+    .join(', ') || 'Nenhum';
+
+  let html = `
+    <div class="modal-summary-line"><span>Evento</span><span>IRON WOLF — 14 Jun 2025</span></div>
+    <div class="modal-summary-line"><span>Ingresso</span><span>${tk.name}</span></div>
+    <div class="modal-summary-line"><span>Exército</span><span>${selectedArmy}</span></div>
+    <div class="modal-summary-line"><span>Adicionais</span><span style="text-align:right;max-width:220px">${addonsDesc}</span></div>
+    <div class="modal-summary-line" style="margin-top:6px;border-top:1px solid #222;padding-top:8px">
+      <strong>Total a Pagar</strong>
+      <div class="modal-summary-total">${fmtBRL(calcTotal())}</div>
+    </div>`;
+  document.getElementById('modalSummary').innerHTML = html;
+}
+
+/* ─── CPF mask ─── */
+document.getElementById('inputCPF').addEventListener('input', function() {
+  let v = this.value.replace(/\D/g,'').substring(0,11);
+  if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
+  else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d+)/,'$1.$2.$3');
+  else if (v.length > 3) v = v.replace(/(\d{3})(\d+)/,'$1.$2');
+  this.value = v;
+});
+
+document.getElementById('inputTelefone').addEventListener('input', function() {
+  let v = this.value.replace(/\D/g,'').substring(0,11);
+  if (v.length > 10) v = v.replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3');
+  else if (v.length > 6) v = v.replace(/(\d{2})(\d{4})(\d+)/,'($1) $2-$3');
+  else if (v.length > 2) v = v.replace(/(\d{2})(\d+)/,'($1) $2');
+  this.value = v;
+});
+
+/* ─── validar CPF ─── */
+function validarCPF(cpf) {
+  cpf = cpf.replace(/\D/g,'');
+  if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+  let s = 0;
+  for (let i = 0; i < 9; i++) s += parseInt(cpf[i]) * (10-i);
+  let r = (s*10) % 11; if (r === 10 || r === 11) r = 0;
+  if (r !== parseInt(cpf[9])) return false;
+  s = 0;
+  for (let i = 0; i < 10; i++) s += parseInt(cpf[i]) * (11-i);
+  r = (s*10) % 11; if (r === 10 || r === 11) r = 0;
+  return r === parseInt(cpf[10]);
+}
+
+/* ─── confirmar compra ─── */
+async function confirmarCompra() {
+  const nome    = document.getElementById('inputNome').value.trim();
+  const equipe  = document.getElementById('inputEquipe').value.trim();
+  const tel     = document.getElementById('inputTelefone').value.trim();
+  const cpf     = document.getElementById('inputCPF').value.trim();
+
+  if (!nome)                     { showToast('⚠️ Informe seu nome.'); return; }
+  if (!tel || tel.length < 14)   { showToast('⚠️ Informe um telefone válido.'); return; }
+  if (!validarCPF(cpf))          { showToast('⚠️ CPF inválido. Verifique e tente novamente.'); return; }
+
+  const btnText    = document.getElementById('btnConfirmText');
+  const btnLoading = document.getElementById('btnConfirmLoading');
+  const btn        = document.getElementById('btnConfirm');
+
+  btnText.style.display    = 'none';
+  btnLoading.style.display = 'inline';
+  btn.disabled = true;
+
+  const tk     = TICKETS[selectedTicketIdx];
+  const total  = calcTotal();
+  const addons = Object.keys(selectedAddons).filter(k => selectedAddons[k]).map(k => ADDONS_CATALOG[k].label);
+
+  /* 1 — Salvar na planilha do Google Sheets */
+  const payload = {
+    timestamp:      new Date().toLocaleString('pt-BR'),
+    evento:         'IRON WOLF — 14 Jun 2025',
+    nome,
+    equipe:         equipe || '—',
+    telefone:       tel,
+    cpf,
+    exercito:       selectedArmy,
+    ingresso:       tk.name,
+    adicionais:     addons.join(', ') || '—',
+    total:          total,
+  };
+
+  try {
+    if (GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL !== 'SUA_URL_DO_APPS_SCRIPT_AQUI') {
+      await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    }
+  } catch(e) {
+    console.warn('Google Sheets: falha ao salvar dados', e);
+  }
+
+  /* 2 — Criar preferência de pagamento via função serverless */
+  try {
+    const mpItems = [
+      { title: `Ingresso ${tk.name} — IRON WOLF`, quantity: 1, unit_price: tk.price, currency_id: 'BRL' },
+      ...Object.keys(selectedAddons)
+        .filter(k => selectedAddons[k])
+        .map(k => ({ title: ADDONS_CATALOG[k].label, quantity: 1, unit_price: ADDONS_CATALOG[k].price, currency_id: 'BRL' }))
+    ];
+
+    const mpRes = await fetch(MP_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: mpItems,
+        payer: { name: nome, phone: { number: tel } },
+        back_urls: {
+          success: MP_SUCCESS_URL,
+          failure: MP_FAILURE_URL,
+          pending: MP_PENDING_URL,
+        },
+        external_reference: `IRONWOLF-${Date.now()}`,
+      }),
+    });
+
+    const mpData = await mpRes.json();
+    if (mpData.init_point) {
+      window.location.href = mpData.init_point;
+      return;
+    } else {
+      throw new Error(JSON.stringify(mpData));
+    }
+  } catch(err) {
+    console.error('Mercado Pago erro:', err);
+    showToast('❌ Erro ao processar pagamento. Tente novamente.');
+    btnText.style.display    = 'inline';
+    btnLoading.style.display = 'none';
+    btn.disabled = false;
+  }
+}
+
+/* ─── toast ─── */
+function showToast(msg, dur = 3500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+/* ─── fechar modal com ESC ─── */
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+});
+
+/* ─── smooth scroll ─── */
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const t = document.querySelector(a.getAttribute('href'));
+    if (t) { e.preventDefault(); window.scrollTo({ top: t.getBoundingClientRect().top + scrollY - 80, behavior: 'smooth' }); }
+  });
+});
+
+/* ─── verificar retorno do Mercado Pago ─── */
+(function checkMPReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const status = params.get('status');
+  if (status === 'approved') {
+    setTimeout(() => showToast('🎖️ Pagamento aprovado! Inscrição confirmada. Verifique seu WhatsApp.', 6000), 800);
+  } else if (status === 'failure') {
+    setTimeout(() => showToast('❌ Pagamento não aprovado. Tente novamente.', 5000), 800);
+  } else if (status === 'pending') {
+    setTimeout(() => showToast('⏳ Pagamento em análise. Você será notificado em breve.', 5000), 800);
+  }
+})();
+</script>
+
+<!--
+════════════════════════════════════════════════════════════════════════
+  📋  INSTRUÇÕES DE CONFIGURAÇÃO
+════════════════════════════════════════════════════════════════════════
+
+  ── MERCADO PAGO ──────────────────────────────────────────────────────
+  1. Acesse https://www.mercadopago.com.br/developers/panel/app
+  2. Crie um app (ou use um existente)
+  3. Vá em "Credenciais de produção"
+  4. Copie o Access Token (começa com APP_USR-...)
+  5. Cole na variável MP_ACCESS_TOKEN no <script> acima
+
+  ── GOOGLE SHEETS (Apps Script) ───────────────────────────────────────
+  1. Crie uma planilha em drive.google.com
+  2. Adicione uma aba "Inscrições" com cabeçalhos:
+     Timestamp | Evento | Nome | Equipe | Telefone | CPF | Exército | Ingresso | Adicionais | Total
+
+  3. No menu: Extensões > Apps Script
+  4. Apague o conteúdo e cole o código abaixo:
+
+  ─────────────────────────────────────────────────────────────────────
+  function doPost(e) {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet()
+      .getSheetByName('Inscrições');
+    const data = JSON.parse(e.postData.contents);
+    sheet.appendRow([
+      data.timestamp, data.evento, data.nome, data.equipe,
+      data.telefone, data.cpf, data.exercito, data.ingresso,
+      data.adicionais, data.total
+    ]);
+    return ContentService.createTextOutput(JSON.stringify({status:'ok'}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  ─────────────────────────────────────────────────────────────────────
+
+  5. Salve (Ctrl+S), depois: Implantar > Nova implantação
+  6. Tipo: App da Web | Executar como: Eu | Acesso: Qualquer pessoa
+  7. Autorize e copie a URL gerada
+  8. Cole em GOOGLE_SCRIPT_URL no <script> acima
+
+════════════════════════════════════════════════════════════════════════
+-->
+</body>
+</html>
